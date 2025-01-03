@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(uuid())
+  email         String           @unique
+  name          String
+  password      String
+  role          UserRole         @default(TEACHER)
+  createdAt     DateTime         @default(now())
+  lastLogin     DateTime?
+  sessions      AnalysisSession[]
+}
+
+model AnalysisSession {
+  id          String           @id @default(uuid())
+  userId      String
+  status      SessionStatus    @default(PENDING)
+  createdAt   DateTime         @default(now())
+  completedAt DateTime?
+  files       FileMetadata[]
+  results     AnalysisResult[]
+  user        User             @relation(fields: [userId], references: [id])
+}
+
+model FileMetadata {
+  id            String          @id @default(uuid())
+  sessionId     String
+  originalName  String
+  storagePath   String?
+  fileType      String
+  size          Int
+  content       String          @db.Text
+  uploadedAt    DateTime        @default(now())
+  session       AnalysisSession @relation(fields: [sessionId], references: [id])
+  result        AnalysisResult?
+}
+
+model AnalysisResult {
+  id                    String          @id @default(uuid())
+  sessionId             String
+  fileId               String          @unique
+  overallScore         Float
+  missedQuestions      Json            // Stored as JSON array
+  lessonRecommendations Json            // Stored as JSON array
+  createdAt            DateTime        @default(now())
+  session              AnalysisSession @relation(fields: [sessionId], references: [id])
+  file                 FileMetadata    @relation(fields: [fileId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  ANALYST
+}
+
+enum SessionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+} 
